@@ -6,28 +6,30 @@
 
 | Name | GitHub | Email |
 |------|--------|-------|
-| Name 1 | [@username](https://github.com/username) | name@sjsu.edu |
-| Name 2 | [@username](https://github.com/username) | name@sjsu.edu |
-| Name 3 | [@username](https://github.com/username) | name@sjsu.edu |
-| Name 4 | [@username](https://github.com/username) | name@sjsu.edu |
+| Andy Lazcano | @Alazca | andy.lazcano@sjsu.edu |
+| Adrian Par | [@adrianpar1 | Adrian.par@sjsu.edu |
+| Philip Figuerres | @PisaFig | philip.figuerres@sjsu.edu |
+| Arda Karayan | @DADaBase88 | arda.karayan@sjsu.edu |
 
-**Advisor:** [Advisor Name]
+**Advisor:** Jun Liu
 
 ---
 
 ## Problem Statement
 
-[2-3 sentences describing the problem you're solving and why it matters]
+Creating autonomous systems that physically interact with dynamic environments requires seamlessly bridging complex artificial intelligence software with low-level mechanical hardware. This project tackles that integration challenge by building a system that must visually interpret a changing game state, calculate complex spatial coordinates, and execute precise physical manipulations without human intervention.
 
 ## Solution
 
-[2-3 sentences describing your solution approach]
+Project BLUNDR solves this by deploying a precision 6-DOF pick-and-place robotic arm designed to autonomously play physical chess against a human opponent . The architecture distributes the compute workload, utilizing a Jetson Nano for computer vision and inverse kinematics, which then sends precise movement commands to a Raspberry Pi that handles the physical servo motor control.
 
 ### Key Features
 
-- Feature 1
-- Feature 2
-- Feature 3
+- AI-Driven Vision System: Real-time piece detection and chess game logic processing powered by a Jetson Nano.
+
+- Distributed Architecture & Protocol: A custom serial communication protocol ensuring reliable data transfer between the high-level AI processor and the low-level Raspberry Pi motor controller.
+
+- Custom Ground Control Station: A web-based NiceGUI dashboard providing live coordinate telemetry, Cartesian and Joint-space jogging, dynamic teachpoint memory, and system diagnostics.
 
 ---
 
