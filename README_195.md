@@ -7,7 +7,7 @@
 | Name | GitHub | Email |
 |------|--------|-------|
 | Andy Lazcano | @Alazca | andy.lazcano@sjsu.edu |
-| Adrian Par | [@adrianpar1 | Adrian.par@sjsu.edu |
+| Adrian Par | @adrianpar1 | Adrian.par@sjsu.edu |
 | Philip Figuerres | @PisaFig | philip.figuerres@sjsu.edu |
 | Arda Karayan | @DADaBase88 | arda.karayan@sjsu.edu |
 
@@ -17,7 +17,7 @@
 
 ## Problem Statement
 
-Creating autonomous systems that physically interact with dynamic environments requires seamlessly bridging complex artificial intelligence software with low-level mechanical hardware. This project tackles that integration challenge by building a system that must visually interpret a changing game state, calculate complex spatial coordinates, and execute precise physical manipulations without human intervention.
+While other robotic fields have rapidly advanced, pick-and-place systems remain tightly coupled and overly reliant on deterministic, high-maintenance kinematics. Developing a smarter, adaptable system with minimal configuration will solve these ongoing accuracy and upgradeability limitations.
 
 ## Solution
 
@@ -35,7 +35,7 @@ Project BLUNDR solves this by deploying a precision 6-DOF pick-and-place robotic
 
 ## Demo
 
-[Link to demo video or GIF]
+https://drive.google.com/file/d/1UTbnnSRUxdsKaKphtBwa2elWPUMDjW3E/view?usp=sharing
 
 **Live Demo:** [URL if deployed]
 
@@ -45,7 +45,10 @@ Project BLUNDR solves this by deploying a precision 6-DOF pick-and-place robotic
 
 | Feature | Screenshot |
 |---------|------------|
-| [Feature 1] | ![Screenshot](docs/screenshots/feature1.png) |
+| Web UI | <img width="1432" height="815" alt="image" src="https://github.com/user-attachments/assets/ae330e57-ca15-404e-ab9c-1b76c988a3e4" /> |
+| Web UI2 | <img width="593" height="779" alt="image" src="https://github.com/user-attachments/assets/72807861-7559-4502-9aae-f48a38c66b39" /> |
+
+
 | [Feature 2] | ![Screenshot](docs/screenshots/feature2.png) |
 
 ---
