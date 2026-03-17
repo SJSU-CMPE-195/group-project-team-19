@@ -65,3 +65,54 @@ def prompt_all_angles() -> None:
             except ValueError:
                 print("  invalid integer, ignoring")
 	
+
+if __name__ == "__main__":
+    # show initial state
+    print("servo_controller starting (debug_mode=", debug_mode, ")")
+    for name, servo in servos.items():
+        print(f"{name}: pin {servo.pin_number}, angle {servo.current_angle}")
+
+    if debug_mode:
+        print("[DEBUG] entering per-servo command loop (Ctrl-C to exit)")
+        while True:
+            try:
+                num_raw = input(f"servo # (0-{len(servos)-1}): ")
+            except KeyboardInterrupt:
+                print("\nexiting debug mode")
+                break
+            if not num_raw.strip():
+                continue
+            try:
+                num = int(num_raw)
+            except ValueError:
+                print("  please enter a valid integer")
+                continue
+            if not (0 <= num < len(servos)):
+                print("  servo number out of range")
+                continue
+
+            try:
+                angle_raw = input(f"angle for s{num} (0-180): ")
+            except KeyboardInterrupt:
+                print("\nexiting debug mode")
+                break
+            if not angle_raw.strip():
+                continue
+            try:
+                angle = int(angle_raw)
+            except ValueError:
+                print("  please enter a valid integer")
+                continue
+            if not (0 <= angle <= 180):
+                print("  angle out of range")
+                continue
+
+            servo_name = f"s{num}"
+            servos[servo_name].set_angle(angle)
+            print(f"Set {servo_name} to {angle} degrees")
+    else:
+        # normal mode
+        prompt_all_angles()
+        print("updated angles:")
+        for name, servo in servos.items():
+            print(f"{name}: {servo.current_angle}")
