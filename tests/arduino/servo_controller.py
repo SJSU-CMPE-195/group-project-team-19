@@ -32,3 +32,10 @@ pin_map = {
 }
 
 
+# dictionary for ServoChannel objects
+# each entry holds pin and angle
+servos: dict[str, sa.ServoChannel] = {}
+for name, pin in pin_map.items():
+    initial_angle = home_angles.get(name)
+    servos[name] = sa.ServoChannel(pin, initial_angle)
+
