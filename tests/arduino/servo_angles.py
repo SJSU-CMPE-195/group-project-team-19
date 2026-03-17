@@ -9,6 +9,13 @@ print("[INFO] Arduino connected, firmware version:", board.firmware)
 
 #servo class for attributtes and functions
 class ServoChannel:
+    """Single servo attached to the Arduino.
+    Attributes:
+        pin_number (int): the digital pin used for PWM.
+        pin: the pyfirmata pin object.
+        current_angle (int | None): last angle written, or ``None`` if unset.
+        speed (float): seconds per degree when stepping; lower is faster.
+    """
 
 
     def __init__(self, pin: int, initial_angle: int | None = None, *, speed: float = 0.02):
