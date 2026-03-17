@@ -3,6 +3,14 @@ import servo_angles as sa
 import sys
 
 
+# default behaviour, can be toggled via command-line argument or environment
+# use: `DEBUG=1 python servo_controller.py`
+debug_mode = True
+if "--no-debug" in sys.argv or os.environ.get("DEBUG","1").startswith("0"):
+    debug_mode = False
+elif "--debug" in sys.argv or os.environ.get("DEBUG","0").startswith("1"):
+    debug_mode = True
+
 #home angles
 home_angles = {
     "s0": 0,
