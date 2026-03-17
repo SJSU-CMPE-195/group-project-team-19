@@ -39,3 +39,15 @@ for name, pin in pin_map.items():
     initial_angle = home_angles.get(name)
     servos[name] = sa.ServoChannel(pin, initial_angle)
 
+
+def set_speed(name: str, speed: float) -> None:
+    """Set the movement speed for servo."""
+    servos[name].speed = speed
+
+
+def get_speed(name: str) -> float:
+    """Return current speedfor servo."""
+    return servos[name].speed
+
+def prompt_all_angles() -> None:
+    """TODO: Ask the user for an angle for each servo and move them accordingly."""
