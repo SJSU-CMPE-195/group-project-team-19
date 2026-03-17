@@ -1,0 +1,6 @@
+#!/Users/adrianpar/dev/senior_project/.venv310/bin/python3.10
+import sys
+from gpiozerocli.pinout import main
+if __name__ == '__main__':
+    sys.argv[0] = sys.argv[0].removesuffix('.exe')
+    sys.exit(main())
