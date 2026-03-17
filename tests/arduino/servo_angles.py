@@ -27,8 +27,12 @@ class ServoChannel:
         self.speed = speed
         if initial_angle is not None:
             self.set_angle(initial_angle)
+    
+    def set_angle(self, angle: int) -> None:
+        self.pin.write(angle)
+        self.current_angle = angle
             
-def step_to(self, angle: int, step: int = 1, delay: float | None = None) -> None:
+    def step_to(self, angle: int, step: int = 1, delay: float | None = None) -> None:
         start = self.current_angle if self.current_angle is not None else 0
         if start == angle:
             return
@@ -40,6 +44,8 @@ def step_to(self, angle: int, step: int = 1, delay: float | None = None) -> None
             sleep(delay)
         if a != angle:
             self.set_angle(angle)
+            
+            
             
             
             
