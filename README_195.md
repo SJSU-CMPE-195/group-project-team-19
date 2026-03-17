@@ -49,7 +49,8 @@ https://drive.google.com/file/d/1UTbnnSRUxdsKaKphtBwa2elWPUMDjW3E/view?usp=shari
 | Web UI2 | <img width="593" height="779" alt="image" src="https://github.com/user-attachments/assets/72807861-7559-4502-9aae-f48a38c66b39" /> |
 
 
-| Setup| https://drive.google.com/file/d/1gspMPG0kqlhMn-QjFCTQSvgEL9fhOe3I/view?usp=sharing|
+| Setup| <img width="1094" height="829" alt="image" src="https://github.com/user-attachments/assets/568434ba-f859-42d3-87d8-f50c63b848f7" />
+|
 
 ---
 
