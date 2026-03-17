@@ -7,6 +7,34 @@ board = Arduino('/dev/cu.usbmodem101')
 print("[INFO] Arduino connected, firmware version:", board.firmware)
 
 
+#servo class for attributtes and functions
+class ServoChannel:
+
+
+    def __init__(self, pin: int, initial_angle: int | None = None, *, speed: float = 0.02):
+        self.pin_number = pin
+        self.pin = board.digital[pin]
+        self.pin.mode = SERVO
+        self.current_angle = None
+        # seconds per degree movement; user may adjust later
+        self.speed = speed
+        if initial_angle is not None:
+            self.set_angle(initial_angle)
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
 def get_servo_angle() -> int:
     """Recieve an angle from the user to be used for the servo."""
     print("Input angle")
