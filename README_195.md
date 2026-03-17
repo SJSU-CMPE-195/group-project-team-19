@@ -37,7 +37,7 @@ Project BLUNDR solves this by deploying a precision 6-DOF pick-and-place robotic
 
 https://drive.google.com/file/d/1UTbnnSRUxdsKaKphtBwa2elWPUMDjW3E/view?usp=sharing
 
-**Live Demo:** [URL if deployed]
+**Live Demo:** https://drive.google.com/file/d/1bCk3d-VIGvpuIWAq40wZlNxnjGsQd002/view?usp=sharing
 
 ---
 
@@ -49,7 +49,7 @@ https://drive.google.com/file/d/1UTbnnSRUxdsKaKphtBwa2elWPUMDjW3E/view?usp=shari
 | Web UI2 | <img width="593" height="779" alt="image" src="https://github.com/user-attachments/assets/72807861-7559-4502-9aae-f48a38c66b39" /> |
 
 
-| [Feature 2] | ![Screenshot](docs/screenshots/feature2.png) |
+| Setup| https://drive.google.com/file/d/1gspMPG0kqlhMn-QjFCTQSvgEL9fhOe3I/view?usp=sharing|
 
 ---
 
