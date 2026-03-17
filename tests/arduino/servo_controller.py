@@ -50,4 +50,18 @@ def get_speed(name: str) -> float:
     return servos[name].speed
 
 def prompt_all_angles() -> None:
-    """TODO: Ask the user for an angle for each servo and move them accordingly."""
+    #input angle for each servo
+    print("Enter angles for each servo (0-180). Leave blank to keep current value.")
+    for name, servo in servos.items():
+        current = servo.current_angle if servo.current_angle is not None else 0
+        raw = input(f"{name} (pin {servo.pin_number}) [current={current}]: ")
+        if raw.strip():
+            try:
+                angle = int(raw)
+                if 0 <= angle <= 180:
+                    servo.set_angle(angle)
+                else:
+                    print("  angle out of range, ignoring")
+            except ValueError:
+                print("  invalid integer, ignoring")
+	
