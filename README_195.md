@@ -76,33 +76,24 @@ https://drive.google.com/file/d/1UTbnnSRUxdsKaKphtBwa2elWPUMDjW3E/view?usp=shari
 
 ```bash
 # Clone the repository
-git clone https://github.com/[org]/[repo].git
-cd [repo]
+git clone https://github.com/SJSU-CMPE-195/group-project-team-19.git
+cd group-project-team-19 
 
 # Install dependencies
-[install command]
+    -- COMING SOON
 
 # Set up environment variables
 cp .env.example .env
+
 # Edit .env with your values
 
-# Run database migrations (if applicable)
-[migration command]
 ```
 
 ### Running Locally
 
 ```bash
 # Development mode
-[dev command]
-
-# The app will be available at http://localhost:XXXX
-```
-
-### Running Tests
-
-```bash
-[test command]
+    -- COMING SOON
 ```
 
 ---
@@ -110,7 +101,7 @@ cp .env.example .env
 ## API Reference
 
 <details>
-<summary>Click to expand API endpoints</summary>
+<summary> COMING SOON </summary>
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|

@@ -1,115 +1,64 @@
-# =============================================================================
-# CMake Build Files
-# =============================================================================
+# ============================================================================
+# .gitignore — CMPE 195 Group Project (C++/CMake + Python + UI)
+# ============================================================================
 
-# CMake build directories
+# ------------------------------------
+# Build artifacts & CMake generated
+# ------------------------------------
 build/
-Build/
 cmake-build-*/
-out/
-
-# CMake cache and generated files
-CMakeCache.txt
 CMakeFiles/
-CMakeScripts/
+CMakeCache.txt
 cmake_install.cmake
-install_manifest.txt
-CTestTestfile.cmake
-*.cmake
-
-# CMake temporary files
-_deps/
-
-# =============================================================================
-# Compiled Object Files and Executables
-# =============================================================================
-
-# Object files
+Makefile
 *.o
-*.ko
 *.obj
-*.elf
-
-# Precompiled headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
 *.a
-*.la
-*.lo
 *.so
-*.so.*
 *.dylib
-*.dll
-
-# Executables
 *.exe
 *.out
-*.app
-*.i*86
-*.x86_64
-*.hex
 
-# =============================================================================
-# IDE and Editor Files
-# =============================================================================
+# ------------------------------------
+# Python virtual environments
+# ------------------------------------
+.venv*/
+__pycache__/
+*.pyc
+*.pyo
 
-# Visual Studio Code
+# ------------------------------------
+# IDE / Editor configs
+# ------------------------------------
 .vscode/
-*.code-workspace
-
-# CLion
 .idea/
-cmake-build-*/
-
-# Visual Studio
-.vs/
-*.user
-*.userosscache
-*.sln.docstates
-*.vcxproj
-*.vcxproj.filters
-
-# Eclipse
-.cproject
-.project
-.settings/
-
-# =============================================================================
-# Operating System Files
-# =============================================================================
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Linux
+*.swp
+*.swo
 *~
-.directory
+.cache/
+compile_commands.json
 
-# Windows
+# ------------------------------------
+# OS junk
+# ------------------------------------
+.DS_Store
 Thumbs.db
-ehthumbs.db
-Desktop.ini
 
-# =============================================================================
-# Other Build Artifacts
-# =============================================================================
+# ------------------------------------
+# UI build output (adjust if needed)
+# ------------------------------------
+ui/node_modules/
+ui/dist/
+ui/.next/
 
-# Ninja build files
-.ninja_deps
-.ninja_log
+# ------------------------------------
+# Docs build output
+# ------------------------------------
+docs/_build/
+docs/html/
 
-# Testing and coverage
-Testing/
-CTestTestfile.cmake
-*.gcda
-*.gcno
-*.gcov
-
-# Doxygen documentation
-doc/html/
-doc/latex/
+# ------------------------------------
+# Misc
+# ------------------------------------
+*.log
+*.tmp
