@@ -1,10 +1,9 @@
 ### 1. First-Time Setup
 ```bash
-git clone https://github.com/Visionary-Embedded-Team/Embedded.git 
-cd Embedded 
+git clone https://github.com/SJSU-CMPE-195/group-project-team-19.git
+cd group-project-team-19 
+
 =======
-git clone [https://github.com/your-org/your-repo.git](https://github.com/Visionary-Embedded-Team/Embedded.git)
-cd Embedded
 git config user.name "Your Name"
 git config user.email "you@example.com"
 ```
