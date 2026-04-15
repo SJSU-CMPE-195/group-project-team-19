@@ -13,6 +13,9 @@ def main():
     #servo speed test
     test_speed()
 
+    #invalid angle
+    test_invalid_angle()
+
 if __name__ == "__main__":
     main()
 
@@ -83,4 +86,40 @@ def test_speed():
         time.sleep(0.5)
 
         sc.servos[name].set_angle(90)
-        time.sleep(0.5)
+
+
+joint_limits = {
+    "s0": (20, 160),
+    "s1": (30, 140),
+    "s2": (40, 150),
+    "s3": (30, 150),
+    "s4": (0, 180),
+    "s5": (40, 120)
+}
+
+#invalid angles for each joint
+test_invalid_angle():
+    print("Testing invalid angle for each joint")
+    
+    ok = True
+
+    for i in range(6):
+        name = "s" + str(i)
+
+        min_a, max_a = joint_limits[name] 
+
+        #test above and below limits
+        test_angle = [min_a - 10, max_a + 10]
+
+        for angle in test_angle:
+            try:
+                sc.servos[name].set_angle(angle)
+
+                #if error isnt output, test failed
+                print(name, "failed for angle:", angle)
+                ok = False
+
+            except:
+                #expected output
+                print(name, "passed for angle:", angle)
+    return ok
