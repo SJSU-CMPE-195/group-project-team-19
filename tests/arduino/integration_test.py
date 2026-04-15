@@ -8,6 +8,8 @@ def main():
     test_setup()
     #servo test movement one at a time
     test_single()
+    #multiple servo test
+    test_sequence()
 
 if __name__ == "__main__":
     main()
@@ -45,5 +47,15 @@ def test_single():
         else:
             print(name, "failed")
             ok = False
-            
+
     return ok
+
+#multiple servo test
+def test_sequence():
+    print("Testing multiple servos at a time")
+
+    for i in range(6):
+        name = "s" + str(i)
+        #move each servo to netrual position
+        sc.servos[name].set_angle(90)
+        time.sleep(0.3)
