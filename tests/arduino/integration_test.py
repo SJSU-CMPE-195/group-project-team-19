@@ -10,6 +10,8 @@ def main():
     test_single()
     #multiple servo test
     test_sequence()
+    #servo speed test
+    test_speed()
 
 if __name__ == "__main__":
     main()
@@ -61,3 +63,7 @@ def test_sequence():
         sc.servos[name].set_angle(angle)
 
         time.sleep(0.3)
+
+#servo speed test
+def test_speed():
+    print("Testing servo speed")
