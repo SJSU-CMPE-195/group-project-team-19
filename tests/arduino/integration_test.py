@@ -67,3 +67,20 @@ def test_sequence():
 #servo speed test
 def test_speed():
     print("Testing servo speed")
+
+    #replace sX with servo testing
+    name = "s2"
+
+    # slowest to fastest
+    speeds = [0.01, 0.02, 0.03, 0.04, 0.05]
+
+    for s in speeds:
+        sc.set_speed(name, s)
+
+        print("Speed set to:", s)
+
+        sc.servos[name].set_angle(30)
+        time.sleep(0.5)
+
+        sc.servos[name].set_angle(90)
+        time.sleep(0.5)
