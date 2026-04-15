@@ -56,6 +56,8 @@ def test_sequence():
 
     for i in range(6):
         name = "s" + str(i)
-        #move each servo to netrual position
-        sc.servos[name].set_angle(90)
+        #move to home position in contoller.py
+        angle = sc.home_angles[name]
+        sc.servos[name].set_angle(angle)
+
         time.sleep(0.3)
