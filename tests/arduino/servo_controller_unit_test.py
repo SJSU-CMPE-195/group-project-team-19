@@ -27,5 +27,13 @@ class TestServoController(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
         
+    def test_set_speed_updates_selected_servo(self):
+        sc.set_speed("s2", 0.05)
+        self.assertEqual(sc.servos["s2"].speed, 0.05)
+
+    def test_get_speed_returns_current_speed(self):
+        sc.servos["s4"].speed = 0.03
+        self.assertEqual(sc.get_speed("s4"), 0.03)
+        
 if __name__ == "__main__":
     unittest.main()
