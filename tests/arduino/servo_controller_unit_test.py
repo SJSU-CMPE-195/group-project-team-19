@@ -53,6 +53,14 @@ class TestServoController(unittest.TestCase):
         self.assertEqual(sc.servos["s3"].current_angle, 90)
         self.assertEqual(sc.servos["s4"].current_angle, 90)
         self.assertEqual(sc.servos["s5"].current_angle, 80)
-        
+
+    def test_invalid_servo_name_raises_keyerror(self):
+        with self.assertRaises(KeyError):
+            sc.set_speed("s9", 0.05)
+
+    def test_get_speed_invalid_servo_name_raises_keyerror(self):
+        with self.assertRaises(KeyError):
+            sc.get_speed("s9")
+            
 if __name__ == "__main__":
     unittest.main()
