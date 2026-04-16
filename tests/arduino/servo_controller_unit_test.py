@@ -46,5 +46,13 @@ class TestServoController(unittest.TestCase):
         self.assertEqual(sc.servos["s1"].speed, original_s1)
         self.assertEqual(sc.servos["s3"].speed, original_s3)
         
+    def test_home_angles_match_expected_starting_values(self):
+        self.assertEqual(sc.servos["s0"].current_angle, 0)
+        self.assertEqual(sc.servos["s1"].current_angle, 90)
+        self.assertEqual(sc.servos["s2"].current_angle, 90)
+        self.assertEqual(sc.servos["s3"].current_angle, 90)
+        self.assertEqual(sc.servos["s4"].current_angle, 90)
+        self.assertEqual(sc.servos["s5"].current_angle, 80)
+        
 if __name__ == "__main__":
     unittest.main()
