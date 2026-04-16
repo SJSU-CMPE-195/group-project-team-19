@@ -35,5 +35,16 @@ class TestServoController(unittest.TestCase):
         sc.servos["s4"].speed = 0.03
         self.assertEqual(sc.get_speed("s4"), 0.03)
         
+    
+    def test_set_speed_only_changes_one_servo(self):
+        original_s1 = sc.servos["s1"].speed
+        original_s3 = sc.servos["s3"].speed
+
+        sc.set_speed("s2", 0.08)
+
+        self.assertEqual(sc.servos["s2"].speed, 0.08)
+        self.assertEqual(sc.servos["s1"].speed, original_s1)
+        self.assertEqual(sc.servos["s3"].speed, original_s3)
+        
 if __name__ == "__main__":
     unittest.main()
