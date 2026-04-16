@@ -16,15 +16,14 @@ def main():
     #invalid angle
     test_invalid_angle()
 
-if __name__ == "__main__":
-    main()
+
 
 def test_setup():
-        print("Testing setup for servos")
+    print("Testing setup for servos")
 
-        for name in sc.servos:
-            #verify home position and that it is recongnized
-            print(name, sc.servos[name].current_angle)
+    for name in sc.servos:
+        #verify home position and that it is recongnized
+        print(name, sc.servos[name].current_angle)
 
 #testing servo movement
 def test_single():
@@ -98,7 +97,7 @@ joint_limits = {
 }
 
 #invalid angles for each joint
-test_invalid_angle():
+def test_invalid_angle():
     print("Testing invalid angle for each joint")
     
     ok = True
@@ -109,9 +108,8 @@ test_invalid_angle():
         min_a, max_a = joint_limits[name] 
 
         #test above and below limits
-        test_angle = [min_a - 10, max_a + 10]
-
-        for angle in test_angle:
+        test_angles = [min_a - 10, max_a + 10]
+        for angle in test_angles:
             try:
                 sc.servos[name].set_angle(angle)
 
@@ -123,3 +121,7 @@ test_invalid_angle():
                 #expected output
                 print(name, "passed for angle:", angle)
     return ok
+
+
+if __name__ == "__main__":
+    main()
