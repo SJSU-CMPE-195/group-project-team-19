@@ -1,0 +1,17 @@
+# --- Core UI & Web ---
+nicegui==1.4.12
+uvicorn==0.27.0
+
+# --- Vision & Processing ---
+opencv-python-headless
+numpy
+
+# --- Hardware (Pi 5 / PCA9685) ---
+adafruit-blinka
+adafruit-circuitpython-pca9685
+adafruit-circuitpython-motor
+rpi-lgpio
+
+# --- Testing & Coverage ---
+pytest
+pytest-cov
