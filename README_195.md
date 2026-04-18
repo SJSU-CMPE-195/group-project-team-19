@@ -1,4 +1,4 @@
-# 🤖 Project BLUNDR: 6-DOF Autonomous Chess Robot
+# Project BLUNDR: 6-DOF Autonomous Chess Robot
 > A distributed AI-driven robotic system for physical chess gameplay.
 
 ![CI Status](https://github.com/SJSU-CMPE-195/group-project-team-19/actions/workflows/ci.yml/badge.svg)
