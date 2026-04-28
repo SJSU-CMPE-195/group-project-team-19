@@ -9,6 +9,7 @@ import serial.tools.list_ports
 from constants import (
     _DEFAULT_BAUD,
     _BAUD_OPTIONS,
+    _TELEMETRY_MS,
     _DEFAULT_LABELS,
     _GRID_COLS,
     _GRID_ROWS,
@@ -24,6 +25,7 @@ class App(tk.Tk):
         self.resizable(True, True)
 
         self._port: ServoPort | None = None
+        self._poll_id = None
 
         self.v_port   = tk.StringVar()
         self.v_baud   = tk.StringVar(value=str(_DEFAULT_BAUD))
@@ -97,8 +99,12 @@ class App(tk.Tk):
         self.btn_connect.config(text="Disconnect")
         self.btn_detect.config(state="normal")
         self._status(f"Connected  {port}  @  {baud:,} baud.")
+        self._schedule_poll()
 
     def _disconnect(self):
+        if self._poll_id:
+            self.after_cancel(self._poll_id)
+            self._poll_id = None
         if self._port:
             self._port.close()
             self._port = None
@@ -161,6 +167,32 @@ class App(tk.Tk):
             self._status(
                 f"Found IDs {sorted_ids} — all panels already assigned, no changes."
             )
+
+    def _schedule_poll(self):
+        if self._port is None:
+            return
+        threading.Thread(target=self._tele_worker, daemon=True).start()
+
+    def _tele_worker(self):
+        results = []
+        for panel in self.panels:
+            sid = panel.v_id.get()
+            if not sid or self._port is None:
+                results.append(None)
+                continue
+            try:
+                data = self._port.get_telemetry(sid)
+            except Exception:
+                data = None
+            results.append(data)
+        self.after(0, self._tele_done, results)
+
+    def _tele_done(self, results: list):
+        for panel, data in zip(self.panels, results):
+            if panel.v_id.get():
+                panel.update_telemetry(data)
+        if self._port:
+            self._poll_id = self.after(_TELEMETRY_MS, self._schedule_poll)
 
     def _status(self, msg: str):
         self.v_status.set(msg)
