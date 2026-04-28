@@ -4,7 +4,15 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 
-from constants import _COUNTS, _COUNT_PER_DEG, _DEFAULT_NUDGE, _DEG_PER_COUNT
+from constants import (
+    _COUNTS,
+    _COUNT_PER_DEG,
+    _DEFAULT_NUDGE,
+    _DEFAULT_SPEED,
+    _DEG_PER_COUNT,
+    _MAX_GOAL_SPEED,
+)
+from widgets import _Tooltip
 
 
 class ServoPanel(ttk.LabelFrame):
@@ -29,6 +37,8 @@ class ServoPanel(ttk.LabelFrame):
             'current_ma':    tk.StringVar(value='—'),
         }
         self._last_data: dict | None = None
+        self.v_speed = tk.IntVar(value=_DEFAULT_SPEED)
+        self._speed_debounce_id = None
         self._zero_counts = 2048
         self._ctrl_btns: list = []
 
@@ -85,6 +95,24 @@ class ServoPanel(ttk.LabelFrame):
         btn_minus.grid(row=1, column=0, **P)
         btn_plus.grid(row=1, column=1, **P)
 
+        ttk.Separator(ctrl, orient="horizontal").grid(
+            row=2, column=0, columnspan=3, sticky="ew", pady=8)
+
+        speed_lbl = ttk.Label(ctrl, text="Speed:")
+        speed_lbl.grid(row=3, column=0, sticky="w", **P)
+        _Tooltip(speed_lbl, "0 = max speed / no limit (Feetech default after power-cycle)")
+        self._speed_slider = tk.Scale(
+            ctrl, from_=0, to=_MAX_GOAL_SPEED, orient="horizontal",
+            variable=self.v_speed, showvalue=0,
+            command=self._on_speed_change,
+        )
+        self._speed_slider.grid(row=3, column=1, sticky="ew", **P)
+        self._speed_slider.bind("<ButtonRelease-1>", self._write_speed_immediate)
+        speed_entry = ttk.Entry(ctrl, textvariable=self.v_speed, width=5)
+        speed_entry.grid(row=3, column=2, **P)
+        speed_entry.bind("<Return>", self._on_speed_entry)
+        speed_entry.bind("<FocusOut>", self._on_speed_entry)
+
         ttk.Label(ctrl, text="Go To (°):").grid(row=4, column=0, sticky="w", **P)
         ttk.Entry(ctrl, textvariable=self.v_goto, width=8).grid(row=4, column=1, **P)
         btn_goto = ttk.Button(ctrl, text="Go", state="disabled", command=self._go_to)
@@ -129,6 +157,7 @@ class ServoPanel(ttk.LabelFrame):
             v.set("—")
         self.v_series.set("—")
         self._last_data = None
+        self.v_speed.set(_DEFAULT_SPEED)
         self._zero_counts = 2048
 
     def set_controls_enabled(self, enabled: bool):
@@ -170,21 +199,54 @@ class ServoPanel(ttk.LabelFrame):
     def _go_to(self):
         self._send_move(self.v_goto.get())
 
+    def _on_speed_entry(self, _event=None):
+        try:
+            speed = self.v_speed.get()
+        except tk.TclError:
+            self.v_speed.set(_DEFAULT_SPEED)
+            return
+        clamped = max(0, min(_MAX_GOAL_SPEED, speed))
+        if clamped != speed:
+            self.v_speed.set(clamped)
+        self._write_speed()
+
+    def _on_speed_change(self, _val=None):
+        if self._speed_debounce_id is not None:
+            self.after_cancel(self._speed_debounce_id)
+        self._speed_debounce_id = self.after(200, self._write_speed)
+
+    def _write_speed_immediate(self, _event=None):
+        if self._speed_debounce_id is not None:
+            self.after_cancel(self._speed_debounce_id)
+            self._speed_debounce_id = None
+        self._write_speed()
+
+    def _write_speed(self):
+        self._speed_debounce_id = None
+        sid = self.v_id.get()
+        if not sid or self.app._port is None:
+            return
+        speed = self.v_speed.get()
+        threading.Thread(target=self.app._port.set_speed,
+                         args=(sid, speed), daemon=True).start()
+
     def _send_move(self, deg: float):
         sid = self.v_id.get()
         if not sid or self.app._port is None:
             return
         raw = self._deg_to_counts(deg)
         counts = max(0, min(_COUNTS - 1, raw))
+        speed = self.v_speed.get()
         threading.Thread(target=self._move_worker,
-                         args=(sid, counts), daemon=True).start()
+                         args=(sid, counts, speed), daemon=True).start()
         msg = f"{self.v_label.get()}: moving to {deg:.1f}°  ({counts} counts)"
         if counts != raw:
             msg += "  — clamped to hardware limit"
         self.app._status(msg)
 
-    def _move_worker(self, sid: int, counts: int):
+    def _move_worker(self, sid: int, counts: int, speed: int):
         port = self.app._port
         if port is None:
             return
+        port.set_speed(sid, speed)
         port.move_to(sid, counts)
