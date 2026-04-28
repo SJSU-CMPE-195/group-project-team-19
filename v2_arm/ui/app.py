@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import tkinter as tk
 from tkinter import ttk
 
@@ -50,7 +51,10 @@ class App(tk.Tk):
         self.btn_connect = ttk.Button(cf, text="Connect", command=self._toggle_connect)
         self.btn_connect.grid(row=0, column=5, **P)
 
-        # Build 5 servo panels in a 3-column × 2-row grid
+        self.btn_detect = ttk.Button(cf, text="Auto-detect", command=self._auto_detect,
+                                     state="disabled")
+        self.btn_detect.grid(row=0, column=6, **P)
+
         self.panels = [
             ServoPanel(self, self, label) for label in _DEFAULT_LABELS
         ]
@@ -91,6 +95,7 @@ class App(tk.Tk):
             self._port = None
             return
         self.btn_connect.config(text="Disconnect")
+        self.btn_detect.config(state="normal")
         self._status(f"Connected  {port}  @  {baud:,} baud.")
 
     def _disconnect(self):
@@ -98,9 +103,64 @@ class App(tk.Tk):
             self._port.close()
             self._port = None
         self.btn_connect.config(text="Connect")
+        self.btn_detect.config(state="disabled")
         for panel in self.panels:
             panel.clear()
         self._status("Disconnected.")
+
+    def _auto_detect(self):
+        self._status("Scanning IDs 1–20 …")
+        self.btn_detect.config(state="disabled")
+        threading.Thread(target=self._detect_worker, daemon=True).start()
+
+    def _detect_worker(self):
+        found = []
+        for sid in range(1, 21):
+            if self._port is None:
+                break
+            try:
+                if self._port.ping(sid) is not None:
+                    found.append(sid)
+            except Exception:
+                pass
+        self.after(0, self._detect_done, found)
+
+    def _detect_done(self, found: list[int]):
+        self.btn_detect.config(state="normal")
+        if not found:
+            self._status("No servos found on IDs 1–20. Check wiring and power.")
+            return
+
+        if len(found) == 1:
+            sid = found[0]
+            for panel in self.panels:
+                if panel.v_id.get() == 0:
+                    panel.set_servo(sid)
+                    break
+            self._status(f"Found 1 servo at ID {sid}. Assign label manually if needed.")
+            return
+
+        sorted_ids = sorted(found)
+        assigned = []
+        id_iter = iter(sorted_ids)
+        for panel, default_label in zip(self.panels, _DEFAULT_LABELS):
+            if panel.v_id.get() != 0:
+                continue
+            try:
+                sid = next(id_iter)
+            except StopIteration:
+                break
+            panel.set_servo(sid, default_label)
+            assigned.append(f"{default_label}→ID {sid}")
+
+        if assigned:
+            self._status(
+                f"Found IDs {sorted_ids}. Auto-assigned: {', '.join(assigned)}."
+            )
+        else:
+            self._status(
+                f"Found IDs {sorted_ids} — all panels already assigned, no changes."
+            )
 
     def _status(self, msg: str):
         self.v_status.set(msg)
