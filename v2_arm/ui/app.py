@@ -5,8 +5,15 @@ from tkinter import ttk
 
 import serial.tools.list_ports
 
-from constants import _DEFAULT_BAUD, _BAUD_OPTIONS
+from constants import (
+    _DEFAULT_BAUD,
+    _BAUD_OPTIONS,
+    _DEFAULT_LABELS,
+    _GRID_COLS,
+    _GRID_ROWS,
+)
 from protocol import ServoPort
+from servo_panel import ServoPanel
 
 
 class App(tk.Tk):
@@ -28,7 +35,7 @@ class App(tk.Tk):
         P = dict(padx=6, pady=3)
 
         cf = ttk.LabelFrame(self, text="Connection")
-        cf.grid(row=0, column=0, sticky="ew", **P)
+        cf.grid(row=0, column=0, columnspan=_GRID_COLS, sticky="ew", **P)
 
         ttk.Label(cf, text="Port:").grid(row=0, column=0, sticky="w", **P)
         self.port_cb = ttk.Combobox(cf, textvariable=self.v_port, width=24, state="readonly")
@@ -42,6 +49,20 @@ class App(tk.Tk):
 
         self.btn_connect = ttk.Button(cf, text="Connect", command=self._toggle_connect)
         self.btn_connect.grid(row=0, column=5, **P)
+
+        # Build 5 servo panels in a 3-column × 2-row grid
+        self.panels = [
+            ServoPanel(self, self, label) for label in _DEFAULT_LABELS
+        ]
+        for idx, panel in enumerate(self.panels):
+            row = 1 + (idx // _GRID_COLS)
+            col = idx % _GRID_COLS
+            panel.grid(row=row, column=col, sticky="nsew", **P)
+
+        for r in range(1, 1 + _GRID_ROWS):
+            self.grid_rowconfigure(r, weight=1)
+        for c in range(_GRID_COLS):
+            self.grid_columnconfigure(c, weight=2)
 
     def _refresh_ports(self):
         ports = [p.device for p in serial.tools.list_ports.comports()]
@@ -77,6 +98,8 @@ class App(tk.Tk):
             self._port.close()
             self._port = None
         self.btn_connect.config(text="Connect")
+        for panel in self.panels:
+            panel.clear()
         self._status("Disconnected.")
 
     def _status(self, msg: str):
