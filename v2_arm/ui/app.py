@@ -40,6 +40,7 @@ class App(tk.Tk):
     def _build_ui(self):
         P = dict(padx=6, pady=3)
 
+        # Total columns: 1 for camera + _GRID_COLS for servo grid
         total_cols = 1 + _GRID_COLS
 
         cf = ttk.LabelFrame(self, text="Connection")
@@ -62,10 +63,15 @@ class App(tk.Tk):
                                      state="disabled")
         self.btn_detect.grid(row=0, column=6, **P)
 
+        ttk.Button(cf, text="Help / How to use",
+                   command=self._show_help).grid(row=0, column=7, **P)
+
+        # Camera on the left, spanning all servo rows
         self.camera_panel = CameraPanel(self, camera_index=0)
         self.camera_panel.grid(row=1, column=0, rowspan=_GRID_ROWS,
                                sticky="nsew", **P)
 
+        # Build 5 servo panels in a 3-column × 2-row grid to the right of the camera
         self.panels = [
             ServoPanel(self, self, label) for label in _DEFAULT_LABELS
         ]
@@ -74,6 +80,7 @@ class App(tk.Tk):
             col = 1 + (idx % _GRID_COLS)
             panel.grid(row=row, column=col, sticky="nsew", **P)
 
+        # Tools row, directly below the servo grid
         recorder_row = 1 + _GRID_ROWS
         self.tools_notebook = ttk.Notebook(self)
         self.tools_notebook.grid(row=recorder_row, column=0,
@@ -219,31 +226,260 @@ class App(tk.Tk):
 
     def _schedule_poll(self):
         if self._port is None:
+            print("[DBG poll] _schedule_poll called but port is None — stopping", flush=True)
             return
+        print("[DBG poll] _schedule_poll — spawning worker thread", flush=True)
         threading.Thread(target=self._tele_worker, daemon=True).start()
 
     def _tele_worker(self):
+        import traceback
         results = []
         for panel in self.panels:
             sid = panel.v_id.get()
             if not sid or self._port is None:
                 results.append(None)
                 continue
+            print(f"[DBG poll] tele_worker tick — ID {sid}", flush=True)
             try:
                 data = self._port.get_telemetry(sid)
-            except Exception:
+                print(f"[DBG poll] ID {sid} get_telemetry returned: {data}", flush=True)
+            except Exception as exc:
+                print(f"[DBG poll] ID {sid} EXCEPTION in get_telemetry: {exc}", flush=True)
+                traceback.print_exc()
                 data = None
             results.append(data)
         self.after(0, self._tele_done, results)
 
     def _tele_done(self, results: list):
+        statuses = ['None' if d is None else 'OK' for d in results]
+        print(f"[DBG poll] _tele_done — results: {statuses}", flush=True)
         for panel, data in zip(self.panels, results):
             if panel.v_id.get():
                 panel.update_telemetry(data)
+
         if hasattr(self, "safety_panel"):
             self.safety_panel.monitor()
+
         if self._port:
             self._poll_id = self.after(_TELEMETRY_MS, self._schedule_poll)
+
+    def _show_help(self):
+        """Open a scrollable how-to window."""
+        existing = getattr(self, "_help_win", None)
+        if existing is not None and existing.winfo_exists():
+            existing.lift()
+            existing.focus_set()
+            return
+
+        win = tk.Toplevel(self)
+        win.title("How to use the Servo Controller")
+        win.geometry("720x640")
+        win.transient(self)
+        self._help_win = win
+
+        frame = ttk.Frame(win)
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        text = tk.Text(frame, wrap="word", font=("Segoe UI", 10),
+                       padx=10, pady=10, relief="flat")
+        scroll = ttk.Scrollbar(frame, orient="vertical", command=text.yview)
+        text.configure(yscrollcommand=scroll.set)
+        text.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
+
+        text.tag_configure("h1", font=("Segoe UI", 14, "bold"), spacing3=8)
+        text.tag_configure("h2", font=("Segoe UI", 11, "bold"), spacing1=10, spacing3=4)
+        text.tag_configure("body", spacing3=4)
+        text.tag_configure("bullet", lmargin1=20, lmargin2=40, spacing3=2)
+        text.tag_configure("warn", foreground="#a00", font=("Segoe UI", 10, "bold"))
+
+        def add(content, tag="body"):
+            text.insert("end", content + "\n", tag)
+
+        add("Waveshare Bus Servo Controller — How to Use", "h1")
+
+        add("The core problem", "h2")
+        add(
+            "Every STS3215 ships with the same default ID (usually 1). "
+            "If two servos share an ID on the bus, they both respond to every "
+            "command and collide. Each servo needs a unique ID before you can "
+            "use them together."
+        )
+
+        add("Step 1 — Assign unique IDs (one-time setup)", "h2")
+        add("Do this once per servo, before wiring them all together:")
+        add("1. Connect ONLY ONE servo to the bus.", "bullet")
+        add("2. Pick your COM port, then click Connect.", "bullet")
+        add("3. Click Auto-detect — the servo shows up in the first panel.", "bullet")
+        add("4. Click Change ID… and pick a number (1, 2, 3, 4, 5).", "bullet")
+        add("5. Power down, swap in the next servo, repeat with the next ID.", "bullet")
+        add(
+            "⚠ Only one servo on the bus during ID change, otherwise every "
+            "servo with the current ID gets the new ID at once.",
+            "warn",
+        )
+
+        add("Step 2 — Normal use with all servos connected", "h2")
+        add("1. Daisy-chain all 5 servos to the bus.", "bullet")
+        add("2. Pick port → Connect.", "bullet")
+        add("3. Click Auto-detect — it pings IDs 1–20 and finds all servos.", "bullet")
+        add(
+            "4. Servos are auto-assigned in ascending ID order: lowest ID → "
+            "Pan, next → Tilt, then Joint 3, 4, 5.",
+            "bullet",
+        )
+        add("5. Rename any panel by typing a new Label (e.g. 'Joint 3' → 'Elbow').", "bullet")
+
+        add("Step 3 — Manual assignment", "h2")
+        add("If auto-detect's order isn't what you want, you have two options:")
+        add(
+            "• Quick rename: type a new name in the Label field. The ID stays, "
+            "the panel just displays a different name.",
+            "bullet",
+        )
+        add(
+            "• Reassign ID: change the ID spinbox on a panel to point it at a "
+            "different servo. Set it to 0 to clear the panel.",
+            "bullet",
+        )
+
+        add("Identifying which physical servo is which", "h2")
+        add(
+            "When you don't know which ID is which joint, use one of these "
+            "tricks to find out:"
+        )
+        add(
+            "• Wiggle test: on any panel, set Go To to a value a few degrees "
+            "from the current angle, click Go. Whichever servo twitches is "
+            "that panel's servo. Work through them one at a time.",
+            "bullet",
+        )
+        add(
+            "• Torque test: click Torque ON for one panel, then try to move "
+            "each physical joint by hand. The one that won't budge is that "
+            "panel's servo.",
+            "bullet",
+        )
+        add(
+            "• Teach test: click Teach: ON for one panel (this releases "
+            "torque), then wiggle a joint by hand. If the Angle readout on "
+            "that panel changes, you've found the right servo.",
+            "bullet",
+        )
+        add(
+            "Tip: once identified, write the ID on tape and stick it to the "
+            "servo. Future you will thank you.",
+            "bullet",
+        )
+
+        add("Panel controls explained", "h2")
+        add("• Label / ID: panel name and the servo ID on the bus.", "bullet")
+        add(
+            "• Telemetry: live readings — angle, raw counts, speed, load %, "
+            "voltage, temperature, current draw.",
+            "bullet",
+        )
+        add(
+            "• Step (°) with − / + buttons: nudge the servo by that many degrees.",
+            "bullet",
+        )
+        add("• Go To (°) + Go: jump directly to an absolute angle (0–359.9°).", "bullet")
+        add(
+            "• Torque ON/OFF: lock the servo in place (ON) or let it spin "
+            "freely (OFF). Torque must be ON to hold position against a load.",
+            "bullet",
+        )
+        add(
+            "• Change ID…: writes a new ID to the servo's EEPROM. "
+            "Single servo on the bus only.",
+            "bullet",
+        )
+        add(
+            "• Teach: ON/OFF: releases torque so you can move the joint by "
+            "hand. When you turn Teach OFF, the servo locks at its current "
+            "position with torque back on — useful for recording poses.",
+            "bullet",
+        )
+
+        add("Safety / Torque Limiters", "h2")
+        add(
+            "Two layers of protection. Edit values per-row, then click Apply "
+            "(or Apply All Torque Limits) to push the kg-cm cap to the servo's "
+            "register 48."
+        )
+        add(
+            "• Max Torque (kg-cm): hardware torque cap. Rated 50 kg-cm, "
+            "hard ceiling 45. Values above 45 are clamped automatically. "
+            "Lives in RAM — must be re-applied after every power-cycle / reconnect.",
+            "bullet",
+        )
+        add(
+            "• Per-joint defaults: Pan/Tilt/Joint 3 = 40 kg-cm, Joint 4 = 30, "
+            "Joint 5 = 25. Reset to Defaults restores these.",
+            "bullet",
+        )
+        add(
+            "• Max Load %, Current mA, Temp C: software fault thresholds. "
+            "When any is exceeded, that servo's torque is disabled and the "
+            "row turns red. Click Clear Faults to re-enable torque.",
+            "bullet",
+        )
+        add(
+            "• The kg-cm cap also acts as a software load cap: effective "
+            "load ceiling = min(Max Load %, kg-cm/50 × 100).",
+            "bullet",
+        )
+
+        add("Macro Recorder (Teach & Repeat)", "h2")
+        add(
+            "Record physical movements and play them back like a macro. "
+            "Recording happens automatically during the telemetry poll — no "
+            "extra bus traffic. Playback replays the saved trajectory at the "
+            "original speed."
+        )
+        add("1. Put the joints you want to teach into Teach: ON.", "bullet")
+        add("2. Click ● Start Recording.", "bullet")
+        add("3. Move the arm physically through the motion you want to teach.", "bullet")
+        add("4. Click ■ Stop Recording when done.", "bullet")
+        add(
+            "5. Click ▶ Playback to replay. Teach mode is switched off and "
+            "torque is re-engaged automatically before playback starts.",
+            "bullet",
+        )
+        add("• Stop Playback aborts mid-replay; the arm freezes in place.", "bullet")
+        add("• Clear Recording wipes the saved trajectory.", "bullet")
+        add(
+            "Each recorded snapshot stores: elapsed time, joint label, servo "
+            "ID, angle in degrees, and raw position counts. Snapshots occur "
+            "roughly every 350 ms (the telemetry poll rate).",
+            "bullet",
+        )
+
+        add("Troubleshooting", "h2")
+        add(
+            "• Auto-detect finds nothing: check USB cable, external power to "
+            "the adapter (servos need 6–12V — USB alone isn't enough), and "
+            "that baud rate matches (default 1,000,000).",
+            "bullet",
+        )
+        add(
+            "• Only some servos found: likely an ID collision or a loose "
+            "daisy-chain connector. Disconnect them all and re-ID them one by one.",
+            "bullet",
+        )
+        add(
+            "• Telemetry shows '?': the servo stopped responding on that "
+            "poll. Usually transient — if it persists, check wiring and power.",
+            "bullet",
+        )
+        add(
+            "• Playback moves look jerky: the poll rate (350 ms) is the "
+            "snapshot interval. Slow physical movements record more smoothly.",
+            "bullet",
+        )
+
+        text.configure(state="disabled")
+        ttk.Button(win, text="Close", command=win.destroy).pack(pady=(0, 10))
 
     def _status(self, msg: str):
         self.v_status.set(msg)
