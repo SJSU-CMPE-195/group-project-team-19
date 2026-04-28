@@ -6,6 +6,7 @@ from tkinter import ttk
 import serial.tools.list_ports
 
 from constants import _DEFAULT_BAUD, _BAUD_OPTIONS
+from protocol import ServoPort
 
 
 class App(tk.Tk):
@@ -14,8 +15,11 @@ class App(tk.Tk):
         self.title("Waveshare Bus Servo Controller")
         self.resizable(True, True)
 
-        self.v_port = tk.StringVar()
-        self.v_baud = tk.StringVar(value=str(_DEFAULT_BAUD))
+        self._port: ServoPort | None = None
+
+        self.v_port   = tk.StringVar()
+        self.v_baud   = tk.StringVar(value=str(_DEFAULT_BAUD))
+        self.v_status = tk.StringVar(value="Not connected.")
 
         self._build_ui()
         self._refresh_ports()
@@ -36,6 +40,9 @@ class App(tk.Tk):
                      values=[str(b) for b in _BAUD_OPTIONS],
                      width=10, state="readonly").grid(row=0, column=4, **P)
 
+        self.btn_connect = ttk.Button(cf, text="Connect", command=self._toggle_connect)
+        self.btn_connect.grid(row=0, column=5, **P)
+
     def _refresh_ports(self):
         ports = [p.device for p in serial.tools.list_ports.comports()]
         self.port_cb['values'] = ports
@@ -43,3 +50,34 @@ class App(tk.Tk):
             self.v_port.set('COM11')
         elif ports and not self.v_port.get():
             self.v_port.set(ports[0])
+
+    def _toggle_connect(self):
+        if self._port is None:
+            self._connect()
+        else:
+            self._disconnect()
+
+    def _connect(self):
+        port = self.v_port.get()
+        if not port:
+            self._status("Select a port first.")
+            return
+        baud = int(self.v_baud.get())
+        try:
+            self._port = ServoPort(port, baud)
+        except Exception as exc:
+            self._status(f"Could not open {port}: {exc}")
+            self._port = None
+            return
+        self.btn_connect.config(text="Disconnect")
+        self._status(f"Connected  {port}  @  {baud:,} baud.")
+
+    def _disconnect(self):
+        if self._port:
+            self._port.close()
+            self._port = None
+        self.btn_connect.config(text="Connect")
+        self._status("Disconnected.")
+
+    def _status(self, msg: str):
+        self.v_status.set(msg)
