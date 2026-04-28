@@ -27,6 +27,7 @@ class ServoPanel(ttk.LabelFrame):
         self.v_nudge = tk.DoubleVar(value=_DEFAULT_NUDGE)
         self.v_goto = tk.DoubleVar(value=0.0)
         self.v_series = tk.StringVar(value="—")
+        self._torque_on = False
         self.v_tele = {
             'angle_deg':     tk.StringVar(value='—'),
             'pos_counts':    tk.StringVar(value='—'),
@@ -41,6 +42,9 @@ class ServoPanel(ttk.LabelFrame):
         self._speed_debounce_id = None
         self._zero_counts = 2048
         self._ctrl_btns: list = []
+        self.btn_torque: ttk.Button | None = None
+        self.btn_set_zero: ttk.Button | None = None
+        self.btn_reset_zero: ttk.Button | None = None
 
         self._build()
         self.v_label.trace_add('write', self._on_label_change)
@@ -112,15 +116,33 @@ class ServoPanel(ttk.LabelFrame):
         speed_entry.grid(row=3, column=2, **P)
         speed_entry.bind("<Return>", self._on_speed_entry)
         speed_entry.bind("<FocusOut>", self._on_speed_entry)
+        ctrl.columnconfigure(1, weight=1)
 
         ttk.Label(ctrl, text="Go To (°):").grid(row=4, column=0, sticky="w", **P)
         ttk.Entry(ctrl, textvariable=self.v_goto, width=8).grid(row=4, column=1, **P)
         btn_goto = ttk.Button(ctrl, text="Go", state="disabled", command=self._go_to)
         btn_goto.grid(row=4, column=2, **P)
 
-        ctrl.columnconfigure(1, weight=1)
+        ttk.Separator(ctrl, orient="horizontal").grid(
+            row=5, column=0, columnspan=3, sticky="ew", pady=8)
 
-        self._ctrl_btns = [btn_minus, btn_plus, btn_goto]
+        self.btn_torque = ttk.Button(ctrl, text="Torque ON", state="disabled",
+                                     command=self._toggle_torque)
+        self.btn_torque.grid(row=6, column=0, columnspan=2, **P)
+
+        ttk.Separator(ctrl, orient="horizontal").grid(
+            row=10, column=0, columnspan=3, sticky="ew", pady=8)
+
+        self.btn_set_zero = ttk.Button(ctrl, text="Set zero here", state="disabled",
+                                       command=self._set_zero_here)
+        self.btn_set_zero.grid(row=11, column=0, columnspan=2, **P)
+
+        self.btn_reset_zero = ttk.Button(ctrl, text="Reset zero", state="disabled",
+                                         command=self._reset_zero)
+        self.btn_reset_zero.grid(row=11, column=2, **P)
+
+        self._ctrl_btns = [btn_minus, btn_plus, btn_goto, self.btn_torque,
+                           self.btn_set_zero, self.btn_reset_zero]
 
     def _update_title(self):
         try:
@@ -157,6 +179,9 @@ class ServoPanel(ttk.LabelFrame):
             v.set("—")
         self.v_series.set("—")
         self._last_data = None
+        self._torque_on = False
+        if self.btn_torque:
+            self.btn_torque.config(text="Torque ON")
         self.v_speed.set(_DEFAULT_SPEED)
         self._zero_counts = 2048
 
@@ -250,3 +275,28 @@ class ServoPanel(ttk.LabelFrame):
             return
         port.set_speed(sid, speed)
         port.move_to(sid, counts)
+
+    def _set_zero_here(self):
+        label = self.v_label.get()
+        if self._last_data is None:
+            self.app._status(f"{label}: Set zero failed — no telemetry yet.")
+            return
+        self._zero_counts = self._last_data['pos_counts']
+        self.app._status(f"{label}: zero set at raw count {self._zero_counts}.")
+        self.update_telemetry(self._last_data)
+
+    def _reset_zero(self):
+        self._zero_counts = 2048
+        self.app._status(f"{self.v_label.get()}: zero reset to count 2048.")
+        self.update_telemetry(self._last_data)
+
+    def _toggle_torque(self):
+        sid = self.v_id.get()
+        if not sid or self.app._port is None:
+            return
+        self._torque_on = not self._torque_on
+        en = self._torque_on
+        threading.Thread(target=self.app._port.set_torque,
+                         args=(sid, en), daemon=True).start()
+        self.btn_torque.config(text="Torque OFF" if en else "Torque ON")
+        self.app._status(f"{self.v_label.get()}: torque {'enabled' if en else 'disabled'}.")
