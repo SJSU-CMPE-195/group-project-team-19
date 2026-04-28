@@ -16,6 +16,9 @@ from constants import (
 )
 from protocol import ServoPort
 from servo_panel import ServoPanel
+from camera_panel import CameraPanel
+from recorder_panel import RecorderPanel
+from safety_panel import SafetyPanel
 
 
 class App(tk.Tk):
@@ -37,8 +40,10 @@ class App(tk.Tk):
     def _build_ui(self):
         P = dict(padx=6, pady=3)
 
+        total_cols = 1 + _GRID_COLS
+
         cf = ttk.LabelFrame(self, text="Connection")
-        cf.grid(row=0, column=0, columnspan=_GRID_COLS, sticky="ew", **P)
+        cf.grid(row=0, column=0, columnspan=total_cols, sticky="ew", **P)
 
         ttk.Label(cf, text="Port:").grid(row=0, column=0, sticky="w", **P)
         self.port_cb = ttk.Combobox(cf, textvariable=self.v_port, width=24, state="readonly")
@@ -57,17 +62,40 @@ class App(tk.Tk):
                                      state="disabled")
         self.btn_detect.grid(row=0, column=6, **P)
 
+        self.camera_panel = CameraPanel(self, camera_index=0)
+        self.camera_panel.grid(row=1, column=0, rowspan=_GRID_ROWS,
+                               sticky="nsew", **P)
+
         self.panels = [
             ServoPanel(self, self, label) for label in _DEFAULT_LABELS
         ]
         for idx, panel in enumerate(self.panels):
             row = 1 + (idx // _GRID_COLS)
-            col = idx % _GRID_COLS
+            col = 1 + (idx % _GRID_COLS)
             panel.grid(row=row, column=col, sticky="nsew", **P)
+
+        # Tools row, directly below the servo grid
+        recorder_row = 1 + _GRID_ROWS
+        self.tools_notebook = ttk.Notebook(self)
+        self.tools_notebook.grid(row=recorder_row, column=0,
+                                 columnspan=total_cols, sticky="ew",
+                                 padx=6, pady=(1, 2))
+
+        recorder_tab = ttk.Frame(self.tools_notebook)
+        safety_tab   = ttk.Frame(self.tools_notebook)
+        self.tools_notebook.add(recorder_tab, text="Macro Recorder")
+        self.tools_notebook.add(safety_tab,   text="Safety / Torque Limiters")
+
+        self.recorder_panel = RecorderPanel(recorder_tab, self)
+        self.recorder_panel.pack(fill="x", expand=False, padx=0, pady=0)
+
+        self.safety_panel = SafetyPanel(safety_tab, self)
+        self.safety_panel.pack(fill="x", expand=False, padx=0, pady=0)
 
         for r in range(1, 1 + _GRID_ROWS):
             self.grid_rowconfigure(r, weight=1)
-        for c in range(_GRID_COLS):
+        self.grid_columnconfigure(0, weight=1)
+        for c in range(1, total_cols):
             self.grid_columnconfigure(c, weight=2)
 
     def _refresh_ports(self):
@@ -99,6 +127,10 @@ class App(tk.Tk):
         self.btn_connect.config(text="Disconnect")
         self.btn_detect.config(state="normal")
         self._status(f"Connected  {port}  @  {baud:,} baud.")
+        if hasattr(self, "recorder_panel"):
+            self.recorder_panel.on_connection_changed()
+        if hasattr(self, "safety_panel"):
+            self.safety_panel.on_connection_changed()
         self._schedule_poll()
 
     def _disconnect(self):
@@ -112,6 +144,10 @@ class App(tk.Tk):
         self.btn_detect.config(state="disabled")
         for panel in self.panels:
             panel.clear()
+        if hasattr(self, "recorder_panel"):
+            self.recorder_panel.on_connection_changed()
+        if hasattr(self, "safety_panel"):
+            self.safety_panel.on_connection_changed()
         self._status("Disconnected.")
 
     def _auto_detect(self):
@@ -144,6 +180,10 @@ class App(tk.Tk):
                     panel.set_servo(sid)
                     break
             self._status(f"Found 1 servo at ID {sid}. Assign label manually if needed.")
+            if hasattr(self, "recorder_panel"):
+                self.recorder_panel.on_connection_changed()
+            if hasattr(self, "safety_panel"):
+                self.safety_panel.refresh_servos()
             return
 
         sorted_ids = sorted(found)
@@ -167,6 +207,10 @@ class App(tk.Tk):
             self._status(
                 f"Found IDs {sorted_ids} — all panels already assigned, no changes."
             )
+        if hasattr(self, "recorder_panel"):
+            self.recorder_panel.on_connection_changed()
+        if hasattr(self, "safety_panel"):
+            self.safety_panel.refresh_servos()
 
     def _schedule_poll(self):
         if self._port is None:
@@ -191,6 +235,8 @@ class App(tk.Tk):
         for panel, data in zip(self.panels, results):
             if panel.v_id.get():
                 panel.update_telemetry(data)
+        if hasattr(self, "safety_panel"):
+            self.safety_panel.monitor()
         if self._port:
             self._poll_id = self.after(_TELEMETRY_MS, self._schedule_poll)
 
