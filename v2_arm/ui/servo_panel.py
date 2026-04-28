@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+import time
 import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
 
@@ -46,6 +47,8 @@ class ServoPanel(ttk.LabelFrame):
         self.btn_change_id: ttk.Button | None = None
         self.btn_set_zero: ttk.Button | None = None
         self.btn_reset_zero: ttk.Button | None = None
+        self._teach_mode = False
+        self.btn_teach: ttk.Button | None = None
 
         self._build()
         self.v_label.trace_add('write', self._on_label_change)
@@ -137,6 +140,10 @@ class ServoPanel(ttk.LabelFrame):
                                         command=self._change_id)
         self.btn_change_id.grid(row=8, column=0, columnspan=3, **P)
 
+        self.btn_teach = ttk.Button(ctrl, text="Teach: OFF", state="disabled",
+                                    command=self._toggle_teach)
+        self.btn_teach.grid(row=9, column=0, columnspan=3, **P)
+
         ttk.Separator(ctrl, orient="horizontal").grid(
             row=10, column=0, columnspan=3, sticky="ew", pady=8)
 
@@ -181,6 +188,10 @@ class ServoPanel(ttk.LabelFrame):
         self._update_title()
 
     def clear(self):
+        if self._teach_mode:
+            self._teach_mode = False
+            if self.btn_teach:
+                self.btn_teach.config(text="Teach: OFF")
         self.set_controls_enabled(False)
         for v in self.v_tele.values():
             v.set("—")
@@ -193,9 +204,11 @@ class ServoPanel(ttk.LabelFrame):
         self._zero_counts = 2048
 
     def set_controls_enabled(self, enabled: bool):
-        state = "normal" if enabled else "disabled"
+        state = "normal" if enabled and not self._teach_mode else "disabled"
         for btn in self._ctrl_btns:
             btn.config(state=state)
+        if self.btn_teach is not None:
+            self.btn_teach.config(state="normal" if enabled else "disabled")
 
     def update_telemetry(self, data):
         if data is None:
@@ -349,3 +362,66 @@ class ServoPanel(ttk.LabelFrame):
         else:
             self.v_id.set(new_id)
             self.app._status(f"Servo ID changed from {old_id} to {new_id}.")
+
+    def _toggle_teach(self):
+        sid = self.v_id.get()
+        if not sid or self.app._port is None:
+            return
+        if not self._teach_mode:
+            self.enter_teach()
+        else:
+            self.exit_teach_async()
+
+    def enter_teach(self):
+        """Enter teach mode (no-op if already in it)."""
+        if self._teach_mode:
+            return
+        sid = self.v_id.get()
+        if not sid or self.app._port is None:
+            return
+        self._teach_mode = True
+        self.btn_teach.config(text="Teach: ON")
+        for btn in self._ctrl_btns:
+            btn.config(state="disabled")
+        self._torque_on = False
+        self.btn_torque.config(text="Torque ON")
+        threading.Thread(
+            target=self.app._port.set_torque, args=(sid, False), daemon=True
+        ).start()
+        self.app._status(f"{self.v_label.get()}: teach mode ON — move joint freely.")
+
+    def exit_teach_async(self):
+        """Exit teach mode; re-engage torque at current position in worker thread."""
+        if not self._teach_mode:
+            return
+        self.btn_teach.config(state="disabled")
+        threading.Thread(target=self._exit_teach_worker, daemon=True).start()
+
+    def is_in_teach(self) -> bool:
+        return self._teach_mode
+
+    def _exit_teach_worker(self):
+        sid = self.v_id.get()
+        counts = None
+        if sid and self.app._port is not None:
+            data = self.app._port.get_telemetry(sid)
+            if data:
+                counts = data['pos_counts']
+                self.app._port.move_to(sid, counts)
+                time.sleep(0.05)
+            self.app._port.set_torque(sid, True)
+        self.after(0, self._exit_teach_done, counts)
+
+    def _exit_teach_done(self, counts):
+        self._teach_mode = False
+        self._torque_on = True
+        self.btn_torque.config(text="Torque OFF")
+        self.btn_teach.config(text="Teach: OFF")
+        self.set_controls_enabled(True)
+        label = self.v_label.get()
+        if counts is not None:
+            self.app._status(
+                f"{label}: teach mode OFF — held at {self._counts_to_deg(counts):.1f}°, torque on."
+            )
+        else:
+            self.app._status(f"{label}: teach mode OFF — torque on.")
