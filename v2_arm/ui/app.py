@@ -74,7 +74,6 @@ class App(tk.Tk):
             col = 1 + (idx % _GRID_COLS)
             panel.grid(row=row, column=col, sticky="nsew", **P)
 
-        # Tools row, directly below the servo grid
         recorder_row = 1 + _GRID_ROWS
         self.tools_notebook = ttk.Notebook(self)
         self.tools_notebook.grid(row=recorder_row, column=0,
@@ -91,6 +90,12 @@ class App(tk.Tk):
 
         self.safety_panel = SafetyPanel(safety_tab, self)
         self.safety_panel.pack(fill="x", expand=False, padx=0, pady=0)
+
+        # Status bar at the bottom
+        ttk.Label(self, textvariable=self.v_status, relief="sunken",
+                  anchor="w").grid(row=recorder_row + 1, column=0,
+                                   columnspan=total_cols,
+                                   sticky="ew", padx=6, pady=2)
 
         for r in range(1, 1 + _GRID_ROWS):
             self.grid_rowconfigure(r, weight=1)
@@ -242,3 +247,14 @@ class App(tk.Tk):
 
     def _status(self, msg: str):
         self.v_status.set(msg)
+
+    def destroy(self):
+        if hasattr(self, "recorder_panel"):
+            if self.recorder_panel._playing:
+                self.recorder_panel._stop_playback_flag.set()
+        if hasattr(self, "safety_panel"):
+            self.safety_panel.stop()
+        if hasattr(self, "camera_panel"):
+            self.camera_panel.stop_camera()
+        self._disconnect()
+        super().destroy()
