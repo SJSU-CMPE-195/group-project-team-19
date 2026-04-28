@@ -6,27 +6,29 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
 
 from constants import (
+    _DEFAULT_SPEED,
+    _DEFAULT_NUDGE,
+    _MAX_GOAL_SPEED,
     _COUNTS,
     _COUNT_PER_DEG,
-    _DEFAULT_NUDGE,
-    _DEFAULT_SPEED,
     _DEG_PER_COUNT,
-    _MAX_GOAL_SPEED,
 )
 from widgets import _Tooltip
 
 
 class ServoPanel(ttk.LabelFrame):
-    """Self-contained UI panel for a single servo on the shared bus."""
+    """UI panel for a single servo on the shared bus."""
 
-    def __init__(self, parent, app, default_label: str):
+    def __init__(self, parent, app: App, default_label: str):
         super().__init__(parent, text=default_label)
         self.app = app
 
-        self.v_label = tk.StringVar(value=default_label)
-        self.v_id = tk.IntVar(value=0)
-        self.v_nudge = tk.DoubleVar(value=_DEFAULT_NUDGE)
-        self.v_goto = tk.DoubleVar(value=0.0)
+        self.series: str | None = None
+
+        self.v_label  = tk.StringVar(value=default_label)
+        self.v_id     = tk.IntVar(value=0)
+        self.v_nudge  = tk.DoubleVar(value=_DEFAULT_NUDGE)
+        self.v_goto   = tk.DoubleVar(value=0.0)
         self.v_series = tk.StringVar(value="—")
         self._torque_on = False
         self.v_tele = {
@@ -38,6 +40,7 @@ class ServoPanel(ttk.LabelFrame):
             'temperature_c': tk.StringVar(value='—'),
             'current_ma':    tk.StringVar(value='—'),
         }
+        # Latest raw telemetry, used by the macro recorder.
         self._last_data: dict | None = None
         self.v_speed = tk.IntVar(value=_DEFAULT_SPEED)
         self._speed_debounce_id = None
@@ -98,8 +101,8 @@ class ServoPanel(ttk.LabelFrame):
 
         btn_minus = ttk.Button(ctrl, text="−", width=4, state="disabled",
                                command=lambda: self._nudge(-1))
-        btn_plus = ttk.Button(ctrl, text="+", width=4, state="disabled",
-                              command=lambda: self._nudge(+1))
+        btn_plus  = ttk.Button(ctrl, text="+", width=4, state="disabled",
+                               command=lambda: self._nudge(+1))
         btn_minus.grid(row=1, column=0, **P)
         btn_plus.grid(row=1, column=1, **P)
 
@@ -168,6 +171,8 @@ class ServoPanel(ttk.LabelFrame):
 
     def _on_label_change(self, *_):
         self._update_title()
+        if hasattr(self.app, "safety_panel"):
+            self.app.safety_panel.refresh_servos()
 
     def _on_id_change(self, *_):
         try:
@@ -179,6 +184,8 @@ class ServoPanel(ttk.LabelFrame):
         elif sid == 0:
             self.set_controls_enabled(False)
         self._update_title()
+        if hasattr(self.app, "safety_panel"):
+            self.app.safety_panel.refresh_servos()
 
     def set_servo(self, sid: int, label: str | None = None):
         self.v_id.set(sid)
@@ -373,7 +380,7 @@ class ServoPanel(ttk.LabelFrame):
             self.exit_teach_async()
 
     def enter_teach(self):
-        """Enter teach mode (no-op if already in it)."""
+        """Enter teach mode no-op if already in it."""
         if self._teach_mode:
             return
         sid = self.v_id.get()
@@ -391,7 +398,7 @@ class ServoPanel(ttk.LabelFrame):
         self.app._status(f"{self.v_label.get()}: teach mode ON — move joint freely.")
 
     def exit_teach_async(self):
-        """Exit teach mode; re-engage torque at current position in worker thread."""
+        """Exit teach mode then re-engage torque at current position in worker thread."""
         if not self._teach_mode:
             return
         self.btn_teach.config(state="disabled")
@@ -425,3 +432,4 @@ class ServoPanel(ttk.LabelFrame):
             )
         else:
             self.app._status(f"{label}: teach mode OFF — torque on.")
+
