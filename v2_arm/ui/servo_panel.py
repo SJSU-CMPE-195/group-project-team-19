@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, simpledialog, ttk
 
 from constants import (
     _COUNTS,
@@ -43,6 +43,7 @@ class ServoPanel(ttk.LabelFrame):
         self._zero_counts = 2048
         self._ctrl_btns: list = []
         self.btn_torque: ttk.Button | None = None
+        self.btn_change_id: ttk.Button | None = None
         self.btn_set_zero: ttk.Button | None = None
         self.btn_reset_zero: ttk.Button | None = None
 
@@ -131,6 +132,12 @@ class ServoPanel(ttk.LabelFrame):
         self.btn_torque.grid(row=6, column=0, columnspan=2, **P)
 
         ttk.Separator(ctrl, orient="horizontal").grid(
+            row=7, column=0, columnspan=3, sticky="ew", pady=8)
+        self.btn_change_id = ttk.Button(ctrl, text="Change ID…", state="disabled",
+                                        command=self._change_id)
+        self.btn_change_id.grid(row=8, column=0, columnspan=3, **P)
+
+        ttk.Separator(ctrl, orient="horizontal").grid(
             row=10, column=0, columnspan=3, sticky="ew", pady=8)
 
         self.btn_set_zero = ttk.Button(ctrl, text="Set zero here", state="disabled",
@@ -142,7 +149,7 @@ class ServoPanel(ttk.LabelFrame):
         self.btn_reset_zero.grid(row=11, column=2, **P)
 
         self._ctrl_btns = [btn_minus, btn_plus, btn_goto, self.btn_torque,
-                           self.btn_set_zero, self.btn_reset_zero]
+                           self.btn_change_id, self.btn_set_zero, self.btn_reset_zero]
 
     def _update_title(self):
         try:
@@ -300,3 +307,45 @@ class ServoPanel(ttk.LabelFrame):
                          args=(sid, en), daemon=True).start()
         self.btn_torque.config(text="Torque OFF" if en else "Torque ON")
         self.app._status(f"{self.v_label.get()}: torque {'enabled' if en else 'disabled'}.")
+
+    def _change_id(self):
+        sid = self.v_id.get()
+        if not sid or self.app._port is None:
+            return
+        ok = messagebox.askokcancel(
+            "Change Servo ID",
+            f"Current ID: {sid}\n\n"
+            "Only ONE servo should be connected to the bus when changing IDs,\n"
+            "to avoid address conflicts.\n\n"
+            "Continue?",
+            parent=self,
+        )
+        if not ok:
+            return
+        new_id = simpledialog.askinteger(
+            "Change Servo ID",
+            f"New ID for servo {sid}  (1–253):",
+            minvalue=1, maxvalue=253, parent=self,
+        )
+        if new_id is None or new_id == sid:
+            return
+        self.btn_change_id.config(state="disabled")
+        threading.Thread(
+            target=self._change_id_worker, args=(sid, new_id), daemon=True
+        ).start()
+
+    def _change_id_worker(self, old_id: int, new_id: int):
+        try:
+            self.app._port.change_id(old_id, new_id)
+            err = None
+        except Exception as exc:
+            err = str(exc)
+        self.after(0, self._change_id_done, old_id, new_id, err)
+
+    def _change_id_done(self, old_id: int, new_id: int, error):
+        self.btn_change_id.config(state="normal")
+        if error:
+            self.app._status(f"ID change failed: {error}")
+        else:
+            self.v_id.set(new_id)
+            self.app._status(f"Servo ID changed from {old_id} to {new_id}.")
