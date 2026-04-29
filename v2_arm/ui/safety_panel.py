@@ -341,3 +341,80 @@ class SafetyPanel(ttk.LabelFrame):
             threading.Thread(
                 target=self._disable_torque_worker, args=(port, sid), daemon=True
             ).start()
+        
+        # ── Worker threads ───────────────────────────────────────────────────
+
+    def _disable_torque_worker(self, port: ServoPort, sid: int):
+        try:
+            port.set_torque(sid, False)
+        except Exception as exc:
+            print(f"[DBG safety] set_torque(False) failed for ID {sid}: {exc}", flush=True)
+
+    def _reenable_torque_worker(self, port: ServoPort, servos: list[tuple[ServoPanel, int]]):
+        for panel, sid in servos:
+            try:
+                port.set_torque(sid, True)
+                panel.after(0, self._torque_reenabled, panel)
+            except Exception as exc:
+                print(f"[DBG safety] set_torque(True) failed for ID {sid}: {exc}", flush=True)
+
+    def _torque_reenabled(self, panel: ServoPanel):
+        panel._torque_on = True
+        if panel.btn_torque:
+            panel.btn_torque.config(text="Torque OFF")
+
+    # ── Torque-limit Apply (per row) ─────────────────────────────────────
+
+    def _apply_torque_limit_clicked(self, panel: ServoPanel):
+        """Per-row Apply: write this servo's torque limit to register 48."""
+        port = self.app._port
+        if port is None:
+            self.app._status("Safety: connect to the bus before applying torque limits.")
+            return
+        sid = self._safe_int(panel.v_id)
+        if sid <= 0:
+            self.app._status(
+                f"Safety: {panel.v_label.get() or 'panel'} has no servo assigned."
+            )
+            return
+        limit = self._limits[panel]
+        try:
+            kgcm = float(limit.max_torque_kgcm.get())
+        except (ValueError, tk.TclError):
+            self.app._status(
+                f"Safety: {panel.v_label.get()} torque value invalid — fix and retry."
+            )
+            return
+        kgcm = max(0.0, min(kgcm, _TORQUE_HARD_CEILING_KGCM))
+        raw = self._kgcm_to_raw(kgcm)
+        self._rows[panel]['apply_btn'].config(state="disabled")
+        threading.Thread(
+            target=self._apply_torque_worker,
+            args=(port, panel, sid, kgcm, raw),
+            daemon=True,
+        ).start()
+
+    def _apply_torque_worker(self, port: ServoPort, panel: ServoPanel,
+                             sid: int, kgcm: float, raw: int):
+        err: str | None = None
+        try:
+            port.write_bytes(sid, _TORQUE_LIMIT_L_REG, [raw & 0xFF, (raw >> 8) & 0xFF])
+        except Exception as exc:
+            err = str(exc)
+            print(f"[DBG safety] torque-limit write failed for ID {sid}: {exc}", flush=True)
+        self.after(0, self._apply_torque_done, panel, sid, kgcm, raw, err)
+
+    def _apply_torque_done(self, panel: ServoPanel, sid: int,
+                           kgcm: float, raw: int, err: str | None):
+        connected = self.app._port is not None
+        self._rows[panel]['apply_btn'].config(state="normal" if connected else "disabled")
+        label = panel.v_label.get() or f"ID {sid}"
+        if err is not None:
+            msg = f"{label}: torque-limit write failed — {err}"
+            self._rows[panel]['status'].set(msg)
+            self.app._status(f"Safety: {msg}")
+            return
+        msg = f"Torque limit set: {kgcm:.1f} kg-cm ({raw}/1000)"
+        self._rows[panel]['status'].set(msg)
+        self.app._status(f"Safety: {label} {msg.lower()}")
+
