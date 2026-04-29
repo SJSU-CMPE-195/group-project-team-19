@@ -52,6 +52,20 @@ ui/dist/
 ui/.next/
 
 # ------------------------------------
+# v2_arm specific (Hardware & Media)
+# ------------------------------------
+# Prevent camera test captures and recordings from bloating the repo
+*.mp4
+*.avi
+*.mkv
+*.jpg
+*.jpeg
+*.png
+recordings/
+captures/
+output/
+
+# ------------------------------------
 # Docs build output
 # ------------------------------------
 docs/_build/
