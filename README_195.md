@@ -1,4 +1,4 @@
-# Project BLUNDR: 6-DOF Autonomous Chess Robot
+# Project BLUNDR: 5-DOF Autonomous Chess Robot
 > A distributed AI-driven robotic system for physical chess gameplay.
 
 ![CI Status](https://github.com/SJSU-CMPE-195/group-project-team-19/actions/workflows/ci.yml/badge.svg)
@@ -184,9 +184,8 @@ To replicate our performance evaluation results:
 
 ## Hardware Setup
 - **Main Brain:** Jetson Orin (Vision / IK)
-- **Controller:** Raspberry Pi 5
-- **PWM Driver:** SparkFun Pi Servo pHAT (PCA9685)
-- **Power:** External 5V 10A DC Power Supply
+- **Controller:** Serial Bus Servos with 12-bit magnetic encoders
+- **Power:** External 12V 10A DC Power Supply
 
 </details>
 
@@ -197,10 +196,12 @@ To replicate our performance evaluation results:
 ```
 .
 ├── .github/workflows/  # CI/CD Pipeline (.yml)
-├── include/            # C++ Header files (Interlocks, Motion)
-├── src/                # Python/C++ Source code
+├── v2_arm/             # Current Smart-Servo Architecture
+│   ├── control/        # Serial protocols, constants, and kinematics
+│   └── ui/             # Tkinter desktop application and panels
 ├── tests/              # Unit, Integration, and Edge Case tests
-├── docs/               # Evaluation, Stress tests, Diagrams, and CAD
+├── docs/               # Evaluation, diagrams, and CAD
+├── requirements.txt    # Python dependencies
 └── README_195.md
 ```
 
