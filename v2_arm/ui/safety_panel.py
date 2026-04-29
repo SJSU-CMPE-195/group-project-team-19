@@ -67,3 +67,32 @@ class SafetyPanel(ttk.LabelFrame):
 
         ttk.Label(buttons, textvariable=self.v_status, anchor="w",
                   relief="sunken").pack(side="left", fill="x", expand=True, padx=(8, 0))
+        table = tk.Frame(self, background="#d9d9d9")
+        table.grid(row=1, column=0, sticky="ew", padx=4, pady=(0, 3))
+        self._table = table
+
+        headers = [
+            ("Servo", 12),
+            ("ID", 4),
+            ("Enabled", 7),
+            ("Max Torque (kg-cm)", 16),
+            ("Max Load %", 8),
+            ("Current mA", 10),
+            ("Temp C", 8),
+            ("Status", 30),
+            ("", 7),  # Apply button column
+        ]
+        for col, (text, width) in enumerate(headers):
+            anchor = "w" if col in (0, 7) else "center"
+            lbl = tk.Label(table, text=text, width=width, anchor=anchor,
+                           background="#e6e6e6", font=("Segoe UI", 9, "bold"),
+                           padx=3, pady=0)
+            lbl.grid(row=0, column=col, sticky="ew", padx=1, pady=0)
+            table.grid_columnconfigure(col, weight=1 if col == 7 else 0)
+            if text == "Max Torque (kg-cm)":
+                _Tooltip(
+                    lbl,
+                    "Rated 50 kg-cm. Hard ceiling 45. Written to register 48 "
+                    "(Torque Limit, RAM) on Apply. RAM resets on power-cycle, "
+                    "so Apply must be re-run after reconnect."
+                )
