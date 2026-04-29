@@ -418,3 +418,45 @@ class SafetyPanel(ttk.LabelFrame):
         self._rows[panel]['status'].set(msg)
         self.app._status(f"Safety: {label} {msg.lower()}")
 
+    def _apply_all_worker(self, port: ServoPort,
+                          targets: list[tuple[ServoPanel, int, float, int]]):
+        results = []
+        for panel, sid, kgcm, raw in targets:
+            try:
+                port.write_bytes(sid, _TORQUE_LIMIT_L_REG,
+                                 [raw & 0xFF, (raw >> 8) & 0xFF])
+                results.append((panel, sid, kgcm, raw, None))
+            except Exception as exc:
+                results.append((panel, sid, kgcm, raw, str(exc)))
+                print(f"[DBG safety] apply-all write failed for ID {sid}: {exc}", flush=True)
+        self.after(0, self._apply_all_done, results)
+
+    def _apply_all_done(self, results: list[tuple]):
+        connected = self.app._port is not None
+        ok_count = 0
+        for panel, sid, kgcm, raw, err in results:
+            self._rows[panel]['apply_btn'].config(
+                state="normal" if connected else "disabled"
+            )
+            label = panel.v_label.get() or f"ID {sid}"
+            if err is not None:
+                self._rows[panel]['status'].set(
+                    f"{label}: torque-limit write failed — {err}"
+                )
+            else:
+                self._rows[panel]['status'].set(
+                    f"Torque limit set: {kgcm:.1f} kg-cm ({raw}/1000)"
+                )
+                ok_count += 1
+        for panel, row in self._rows.items():
+            if not row['apply_btn']['state']:
+                continue
+            row['apply_btn'].config(state="normal" if connected else "disabled")
+        total = len(results)
+        if ok_count == total:
+            self.app._status(f"Safety: applied torque limits to {ok_count} servo(s).")
+        else:
+            self.app._status(
+                f"Safety: applied torque limits to {ok_count}/{total} servo(s); "
+                f"see row status for failures."
+            )
