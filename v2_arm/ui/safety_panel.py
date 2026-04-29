@@ -203,3 +203,61 @@ class SafetyPanel(ttk.LabelFrame):
                 self._trip_fault(panel, sid, fault)
 
         self.refresh_servos()
+    def enable_all(self):
+        for panel, limit in self._limits.items():
+            if self._safe_int(panel.v_id) > 0:
+                limit.enabled.set(True)
+        self.refresh_servos()
+        self.app._status("Safety: all assigned servo limits enabled.")
+
+    def disable_all(self):
+        for limit in self._limits.values():
+            limit.enabled.set(False)
+        self.refresh_servos()
+        self.app._status("Safety: all limits disabled.")
+
+    def reset_defaults(self):
+        for panel, limit in self._limits.items():
+            default_kgcm = _DEFAULT_TORQUE_KGCM.get(
+                panel.v_label.get(), _DEFAULT_TORQUE_FALLBACK_KGCM
+            )
+            self._suppress_clamp[panel] = True
+            try:
+                limit.max_torque_kgcm.set(default_kgcm)
+            finally:
+                self._suppress_clamp[panel] = False
+            limit.max_load_pct.set(_DEFAULT_MAX_LOAD_PCT)
+            limit.max_current_ma.set(_DEFAULT_MAX_CURRENT_MA)
+            limit.max_temp_c.set(_DEFAULT_MAX_TEMP_C)
+            limit.enabled.set(False)
+            limit.faulted = False
+            limit.fault_message = ""
+        self.refresh_servos()
+        self.app._status("Safety: limits reset to per-joint defaults.")
+
+    def apply_all_torque_limits(self):
+        """Write every assigned servo's torque limit to register 48 sequentially."""
+        port = self.app._port
+        if port is None:
+            self.app._status("Safety: connect to the bus before applying torque limits.")
+            return
+        targets = []
+        for panel, limit in self._limits.items():
+            sid = self._safe_int(panel.v_id)
+            if sid <= 0:
+                continue
+            try:
+                kgcm = float(limit.max_torque_kgcm.get())
+            except (ValueError, tk.TclError):
+                continue
+            kgcm = max(0.0, min(kgcm, _TORQUE_HARD_CEILING_KGCM))
+            raw = self._kgcm_to_raw(kgcm)
+            targets.append((panel, sid, kgcm, raw))
+        if not targets:
+            self.app._status("Safety: no assigned servos to apply torque limits to.")
+            return
+        for row in self._rows.values():
+            row['apply_btn'].config(state="disabled")
+        threading.Thread(
+            target=self._apply_all_worker, args=(port, targets), daemon=True
+        ).start()
