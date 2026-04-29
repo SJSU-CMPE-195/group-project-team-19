@@ -203,6 +203,7 @@ class SafetyPanel(ttk.LabelFrame):
                 self._trip_fault(panel, sid, fault)
 
         self.refresh_servos()
+
     def enable_all(self):
         for panel, limit in self._limits.items():
             if self._safe_int(panel.v_id) > 0:
@@ -261,3 +262,82 @@ class SafetyPanel(ttk.LabelFrame):
         threading.Thread(
             target=self._apply_all_worker, args=(port, targets), daemon=True
         ).start()
+    def clear_faults(self):
+        port = self.app._port
+        to_enable = []
+        for panel, limit in self._limits.items():
+            if not limit.faulted:
+                continue
+            sid = self._safe_int(panel.v_id)
+            limit.faulted = False
+            limit.fault_message = ""
+            if port is not None and sid > 0:
+                to_enable.append((panel, sid))
+
+        self.refresh_servos()
+        if to_enable and port is not None:
+            threading.Thread(
+                target=self._reenable_torque_worker, args=(port, to_enable), daemon=True
+            ).start()
+            self.app._status("Safety: faults cleared; torque re-enable requested.")
+        else:
+            self.app._status("Safety: faults cleared.")
+
+    def on_connection_changed(self):
+        if self.app._port is None:
+            for limit in self._limits.values():
+                limit.faulted = False
+                limit.fault_message = ""
+        self.refresh_servos()
+
+    # ── Fault detection ──────────────────────────────────────────────────
+
+    def _find_fault(self, panel: ServoPanel, limit: SafetyLimit, data: dict) -> str | None:
+        label = panel.v_label.get() or f"ID {panel.v_id.get()}"
+        try:
+            user_max_load  = float(limit.max_load_pct.get())
+            max_current    = int(limit.max_current_ma.get())
+            max_temp       = int(limit.max_temp_c.get())
+            max_torque_kgcm = float(limit.max_torque_kgcm.get())
+        except (ValueError, tk.TclError):
+            return f"{label} invalid safety limit - torque disabled"
+
+        load    = float(data.get('load_pct', 0.0))
+        current = int(data.get('current_ma', 0))
+        temp    = int(data.get('temperature_c', 0))
+
+        torque_load_cap  = (max_torque_kgcm / _SERVO_RATED_KGCM) * 100.0
+        effective_max_load = min(user_max_load, torque_load_cap)
+
+        if load > effective_max_load:
+            if torque_load_cap < user_max_load:
+                return (
+                    f"{label} overload ({load:.1f}% > {effective_max_load:.1f}%) "
+                    f"- exceeded torque cap of {max_torque_kgcm:.1f} kg-cm "
+                    f"- torque disabled"
+                )
+            return (
+                f"{label} overload ({load:.1f}% > {user_max_load:.1f}%) "
+                f"- torque disabled"
+            )
+        if current > max_current:
+            return f"{label} overcurrent ({current}mA > {max_current}mA) - torque disabled"
+        if temp > max_temp:
+            return f"{label} overtemp ({temp}C > {max_temp}C) - torque disabled"
+        return None
+
+    def _trip_fault(self, panel: ServoPanel, sid: int, message: str):
+        limit = self._limits[panel]
+        limit.faulted = True
+        limit.fault_message = message
+        panel._torque_on = False
+        if panel.btn_torque:
+            panel.btn_torque.config(text="Torque ON")
+        self.v_status.set(message)
+        self.app._status(f"Safety: {message}")
+
+        port = self.app._port
+        if port is not None:
+            threading.Thread(
+                target=self._disable_torque_worker, args=(port, sid), daemon=True
+            ).start()
