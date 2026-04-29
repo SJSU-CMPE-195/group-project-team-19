@@ -460,3 +460,95 @@ class SafetyPanel(ttk.LabelFrame):
                 f"Safety: applied torque limits to {ok_count}/{total} servo(s); "
                 f"see row status for failures."
             )
+    # ── Misc helpers ─────────────────────────────────────────────────────
+
+    def _on_torque_var_change(self, panel: ServoPanel):
+        """trace_add callback: clamp values outside the [0, 45 kg-cm] range."""
+        if self._suppress_clamp.get(panel, False):
+            return
+        limit = self._limits[panel]
+        try:
+            kgcm = float(limit.max_torque_kgcm.get())
+        except (ValueError, tk.TclError):
+            return
+        if kgcm > _TORQUE_HARD_CEILING_KGCM:
+            self._suppress_clamp[panel] = True
+            try:
+                limit.max_torque_kgcm.set(_TORQUE_HARD_CEILING_KGCM)
+            finally:
+                self._suppress_clamp[panel] = False
+            label = panel.v_label.get() or "panel"
+            self.app._status(
+                f"{label}: max torque clamped to "
+                f"{_TORQUE_HARD_CEILING_KGCM:.0f} kg-cm ceiling"
+            )
+        elif kgcm < 0.0:
+            self._suppress_clamp[panel] = True
+            try:
+                limit.max_torque_kgcm.set(0.0)
+            finally:
+                self._suppress_clamp[panel] = False
+            label = panel.v_label.get() or "panel"
+            self.app._status(f"{label}: max torque clamped to 0 kg-cm floor")
+
+    @staticmethod
+    def _kgcm_to_raw(kgcm: float) -> int:
+        """Convert kg-cm to STS3215 register-48 raw value (0..1000)."""
+        kgcm = max(0.0, min(kgcm, _TORQUE_HARD_CEILING_KGCM))
+        raw = int(round(kgcm / _SERVO_RATED_KGCM * 1000.0))
+        return max(0, min(1000, raw))
+
+    def _on_toggle(self, panel: ServoPanel):
+        limit = self._limits[panel]
+        if limit.enabled.get() and limit.faulted:
+            limit.faulted = False
+            limit.fault_message = ""
+        self.refresh_servos()
+
+    def _set_row_bg(self, panel: ServoPanel, color: str):
+        for widget in self._rows[panel]['widgets']:
+            try:
+                widget.config(background=color)
+            except tk.TclError:
+                pass
+
+    def _refresh_fault_indicator(self):
+        active_faults = [
+            limit.fault_message for limit in self._limits.values()
+            if limit.faulted and limit.fault_message
+        ]
+        if active_faults:
+            self.v_status.set(active_faults[-1])
+            if self._flash_after_id is None:
+                self._flash()
+            return
+
+        if self._flash_after_id is not None:
+            self.after_cancel(self._flash_after_id)
+            self._flash_after_id = None
+        self._flash_on = False
+        self.configure(text="Safety / Torque Limiters")
+        self.v_status.set("No faults.")
+
+    def _flash(self):
+        if not any(limit.faulted for limit in self._limits.values()):
+            self._flash_after_id = None
+            self.configure(text="Safety / Torque Limiters")
+            return
+        self._flash_on = not self._flash_on
+        self.configure(
+            text="*** SAFETY FAULT ***" if self._flash_on else "Safety / Torque Limiters"
+        )
+        self._flash_after_id = self.after(500, self._flash)
+
+    def stop(self):
+        if self._flash_after_id is not None:
+            self.after_cancel(self._flash_after_id)
+            self._flash_after_id = None
+
+    @staticmethod
+    def _safe_int(var: tk.IntVar) -> int:
+        try:
+            return int(var.get())
+        except (ValueError, tk.TclError):
+            return 0
