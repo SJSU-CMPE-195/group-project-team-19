@@ -155,3 +155,51 @@ class SafetyPanel(ttk.LabelFrame):
             }
 
         self.grid_columnconfigure(0, weight=1)
+
+      # ── Public actions ────────────────────────────────────────────────────
+
+    def refresh_servos(self):
+        for panel, limit in self._limits.items():
+            row = self._rows[panel]
+            sid = self._safe_int(panel.v_id)
+            row['name'].set(panel.v_label.get() or "Servo")
+            row['sid'].set(str(sid) if sid else "-")
+            connected = self.app._port is not None and sid > 0
+
+            if not connected:
+                row['status'].set("Not connected." if sid else "Not assigned.")
+                self._set_row_bg(panel, self._DISABLED_BG)
+            elif limit.faulted:
+                row['status'].set(limit.fault_message)
+                self._set_row_bg(panel, self._FAULT_BG)
+            else:
+                row['status'].set("Monitoring." if limit.enabled.get() else "Limits disabled.")
+                self._set_row_bg(panel, self._OK_BG)
+
+            state = "normal" if sid > 0 else "disabled"
+            for widget in row['inputs']:
+                widget.config(state=state)
+            row['apply_btn'].config(state="normal" if connected else "disabled")
+
+        self._refresh_fault_indicator()
+
+    def monitor(self):
+        """Called from App._tele_done after panels receive their latest telemetry."""
+        if self.app._port is None:
+            self.refresh_servos()
+            return
+
+        for panel, limit in self._limits.items():
+            sid = self._safe_int(panel.v_id)
+            if sid <= 0 or not limit.enabled.get() or limit.faulted:
+                continue
+
+            data = panel._last_data
+            if not data:
+                continue
+
+            fault = self._find_fault(panel, limit, data)
+            if fault:
+                self._trip_fault(panel, sid, fault)
+
+        self.refresh_servos()
