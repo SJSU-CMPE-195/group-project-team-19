@@ -1,21 +1,23 @@
-name: CI
+name: CI/CD Pipeline
 
 on: [push, pull_request]
 
 jobs:
-  test:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+    
+      - name: Environment Initialization (Checkout)
+        uses: actions/checkout@v4
       
-      - name: Set up Python
+      - name: Environment Initialization (Python Setup)
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Install Python Dependencies
+      - name: Install Dependencies
         run: |
-          pip install pytest pytest-cov nicegui opencv-python-headless
+          pip install pytest pytest-cov nicegui opencv-python-headless flake8
           
       - name: Configure CMake
         run: cmake -S . -B build
@@ -23,12 +25,22 @@ jobs:
       - name: Build C++ Components
         run: cmake --build build
 
-      - name: Run Tests
+     
+      - name: Static Analysis & Linting
+        run: |
+          # Stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Treat formatting issues as warnings so they don't break the build
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+   
+      - name: Automated Test Execution
         run: |
           pytest --cov=./ tests/
           cd build && ctest --output-on-failure
 
-      - name: Upload Coverage Report
+    
+      - name: Status Report (Upload Coverage)
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
