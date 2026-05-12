@@ -1,5 +1,4 @@
 name: CI/CD Pipeline
-
 on: [push, pull_request]
 
 jobs:
@@ -8,7 +7,7 @@ jobs:
     steps:
       - name: Environment Initialization (Checkout)
         uses: actions/checkout@v4
-      
+
       - name: Environment Initialization (Python Setup)
         uses: actions/setup-python@v4
         with:
@@ -17,7 +16,7 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install pytest pytest-cov nicegui opencv-python-headless flake8 pyfirmata
-          
+
       - name: Configure CMake
         run: cmake -S . -B build
 
@@ -31,8 +30,8 @@ jobs:
 
       - name: Automated Test Execution
         run: |
-          export PYTHONPATH=".:./v2_arm/ui:./v2_arm/control:./tests/unit:./tests/integration"
-          pytest tests/unit/servo_angles.py
+          export PYTHONPATH=".:./src:./ui:./tests/unit:./tests/integration"
+          pytest tests/unit/servo_controller_unit_test.py --cov=. --cov-report=html -v
           cd build && ctest --output-on-failure
 
       - name: Status Report (Upload Coverage)
