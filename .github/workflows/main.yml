@@ -30,8 +30,8 @@ jobs:
 
       - name: Automated Test Execution
         run: |
-          export PYTHONPATH=".:./src:./ui:./tests/unit:./tests/integration"
-          pytest tests/unit/servo_controller_unit_test.py --cov=. --cov-report=html -v
+          export PYTHONPATH=".:./src:./ui:./v2_arm:./tests/unit:./tests/integration"
+          pytest tests/unit/test_kinematics.py --cov=. --cov-report=html -v
           cd build && ctest --output-on-failure
 
       - name: Status Report (Upload Coverage)
